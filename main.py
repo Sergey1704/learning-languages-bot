@@ -1,11 +1,43 @@
 from telegram.ext import Updater, MessageHandler, Filters, CallbackContext, CommandHandler, CallbackQueryHandler
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from datetime import datetime, time, timedelta
+from random import choice
 
-words = {'hello': 'привет',
-         'cat': 'кот',
-         'suka': 'сука',
-         'kekw': 'кек',
-         'pycharm': 'пайчарм'}
+words = {'Algebra': 'алгебра',
+        'Archaeology': 'археология',
+        'Art': 'изобразительное искусство',
+        'Biology': 'биология',
+        'Botany': 'ботаника',
+        'Calculus': 'математический анализ',
+        'Chemistry': 'химия',
+        'Computer science': 'информатика',
+        'Drama': 'драматургия',
+        'Economics': 'экономика',
+        'English': 'английский',
+        'French': 'французский',
+        'Geography': 'география',
+        'Geology': 'геология',
+        'Geometry': 'геометрия',
+        'German': 'немецкий',
+        'Gym': 'гимнастика',
+        'Health': 'охрана здоровья',
+        'History': 'история',
+        'Home economics': 'домоводство',
+        'Keyboarding': 'машинопись',
+        'Language arts': 'словесность',
+        'Literature': 'литература',
+        'Math': 'математика',
+        'Mathematics': 'математика',
+        'Music': 'музыка',
+        'Pe': 'физкультура',
+        'Physical education': 'физкультура',
+        'Physics': 'физика',
+        'Psychology': 'психология',
+        'Reading': 'чтение',
+        'Science': 'наука',
+        'Social studies': 'социология, обществознание',
+        'World geography': 'мировая география',
+        'Writing': 'письменность, письменная речь'}
 
 keyboard = [[InlineKeyboardButton('знаю', callback_data='1'), InlineKeyboardButton('не знаю', callback_data='0')]]
 
@@ -19,13 +51,22 @@ def handle_callback(update: Update, context: CallbackContext):
 
 def notify_user(context: CallbackContext):
     chat_id = context.job.context['chat_id']
-    context.bot.send_message(chat_id, words['hello'], reply_markup=InlineKeyboardMarkup(keyboard))
+    eng_word = choice(list(words.keys()))
+    message = f'ENG: {eng_word}\nRUS: {words[eng_word]}'
+    context.bot.send_message(chat_id, message, reply_markup=InlineKeyboardMarkup(keyboard))
 
 def handle_start(update: Update, context: CallbackContext):
     chat_id = update.message.chat_id
-    num_of_words = len(words)
-    interval = 60 / num_of_words
-    context.job_queue.run_repeating(notify_user, interval, first=0, last=interval*num_of_words, context={'chat_id': chat_id})
+    num_of_words = 10
+    start_time = time(8, 00)
+    end_time = time(20, 00)
+    time_interval = timedelta(hours=end_time.hour - start_time.hour,
+                              minutes=end_time.minute - start_time.minute) / num_of_words
+
+    for i in range(num_of_words):
+        job_datetime = datetime.combine(datetime.utcnow(), start_time) + i * time_interval
+        job_time = job_datetime.timetz()
+        context.job_queue.run_daily(notify_user, job_time, context={'chat_id': chat_id}, name=str(chat_id))
 
 def echo(update: Update, context: CallbackContext):
     chat_id = update.message.chat_id
@@ -33,6 +74,7 @@ def echo(update: Update, context: CallbackContext):
     context.bot.send_message(chat_id, text)
 
 if __name__ == '__main__':
+    # TODO подгружать токен из файла
     token = '1475171950:AAHrKfne24sx-TppHxig-eeJtS_bY9sUn94'
 
     updater = Updater(token, use_context=True)
