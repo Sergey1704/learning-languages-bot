@@ -21,7 +21,7 @@ class MongoPersistence(DictPersistence):
             self._chat_data = defaultdict(dict)
         if self._chat_data.get(chat_id) == data:
             return
-        if self._chat_data.get(chat_id).get('settings') != data.get('settings'):
+        if self._chat_data.get(chat_id) is None or self._chat_data.get(chat_id).get('settings') != data.get('settings'):
             restart_user_jobs(chat_id, data, self.job_queue)
 
         self._chat_data[chat_id] = data

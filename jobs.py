@@ -49,7 +49,8 @@ def notify_user(context: CallbackContext):
     eng_word, ru_word = choice(list(words.items()))
     message = f'ENG: {eng_word}\nRUS: {ru_word}'
 
-    keyboard = [[InlineKeyboardButton('знаю', callback_data='1'), InlineKeyboardButton('не знаю', callback_data='0')]]
+    keyboard = [[InlineKeyboardButton('знаю', callback_data='known'),
+                 InlineKeyboardButton('не знаю', callback_data='unknown')]]
     context.bot.send_message(chat_id, message, reply_markup=InlineKeyboardMarkup(keyboard))
 
 
@@ -63,8 +64,11 @@ def restart_user_jobs(chat_id: int, chat_data: dict, job_queue: JobQueue):
     start_time = time.fromisoformat(settings.get('start_time'))
     end_time = time.fromisoformat(settings.get('end_time'))
 
-    time_interval = timedelta(hours=end_time.hour - start_time.hour,
-                              minutes=end_time.minute - start_time.minute) / num_of_words
+    time_interval = None
+    days = 0 if start_time <= end_time else 1
+    if num_of_words > 0:
+        time_interval = timedelta(days=days, hours=end_time.hour - start_time.hour,
+                                  minutes=end_time.minute - start_time.minute) / num_of_words
 
     job_times = []
     for i in range(num_of_words):
@@ -76,6 +80,8 @@ def restart_user_jobs(chat_id: int, chat_data: dict, job_queue: JobQueue):
         job_times.append({'time': job_time.isoformat()})
 
     set_to_database(chat_id, 'jobs', job_times)
+
+    return num_of_words
 
 
 def start_saved_jobs(updater: Updater):
