@@ -1,10 +1,9 @@
-from telegram.ext import Updater, MessageHandler, Filters, CallbackContext, CommandHandler, CallbackQueryHandler
+from environs import Env
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import Updater, MessageHandler, Filters, CallbackContext, CommandHandler, CallbackQueryHandler
 from persistence import MongoPersistence
 from jobs import start_saved_jobs
-from environs import Env
-
-import json
+from words import word_callback
 
 
 def convert_time_from_utc(utc_time: str, timezone: str) -> str:
@@ -125,9 +124,9 @@ def timezone_callback(update: Update, context: CallbackContext):
 
     timezone = timezone.replace('+', '\\+').replace('-', '\\-')
     new_message = f'*Настройки*\n\nЧасовой пояс:\n\n{timezone}'
-    keyboard = [[InlineKeyboardButton('\u25C0', callback_data='timezone -'),
-                 InlineKeyboardButton('\u25A3', callback_data='timezone 0'),
-                 InlineKeyboardButton('\u25B6', callback_data='timezone +')],
+    keyboard = [[InlineKeyboardButton('\u25C1', callback_data='timezone -'),
+                 InlineKeyboardButton('\u25A1', callback_data='timezone 0'),
+                 InlineKeyboardButton('\u25B7', callback_data='timezone +')],
                 [InlineKeyboardButton('Назад', callback_data='back timezone'),
                  InlineKeyboardButton('Сохранить', callback_data='save timezone')]]
 
@@ -156,9 +155,9 @@ def num_of_words_callback(update: Update, context: CallbackContext):
         num_of_words = str(num_of_words)
 
     new_message = f'*Настройки*\n\nКоличество слов в день:\n\n{num_of_words}'
-    keyboard = [[InlineKeyboardButton('\u25C0', callback_data='num_of_words -'),
-                 InlineKeyboardButton('\u25C9', callback_data='num_of_words 0'),
-                 InlineKeyboardButton('\u25B6', callback_data='num_of_words +')],
+    keyboard = [[InlineKeyboardButton('\u25C1', callback_data='num_of_words -'),
+                 InlineKeyboardButton('\u25A1', callback_data='num_of_words 0'),
+                 InlineKeyboardButton('\u25B7', callback_data='num_of_words +')],
                 [InlineKeyboardButton('Назад', callback_data='back num_of_words'),
                  InlineKeyboardButton('Сохранить', callback_data='save num_of_words')]]
 
@@ -210,12 +209,12 @@ def end_time_callback(update: Update, context: CallbackContext):
     end_time = make_time_callback_operation('end_time', update, context)
 
     new_message = f'*Настройки*\n\nВремя конца отправки слов:\n\n{end_time}\n'
-    keyboard = [[InlineKeyboardButton('\u276E\u276E\u276E', callback_data='end_time h-'),
+    keyboard = [[InlineKeyboardButton('\u25C1', callback_data='end_time h-'),
                  InlineKeyboardButton('час', callback_data='end_time h0'),
-                 InlineKeyboardButton('\u276F\u276F\u276F', callback_data='end_time h+')],
-                [InlineKeyboardButton('<<<', callback_data='end_time m-'),
+                 InlineKeyboardButton('\u25B7', callback_data='end_time h+')],
+                [InlineKeyboardButton('\u25C1', callback_data='end_time m-'),
                  InlineKeyboardButton('мин', callback_data='end_time m0'),
-                 InlineKeyboardButton('>>>', callback_data='end_time m+')],
+                 InlineKeyboardButton('\u25B7', callback_data='end_time m+')],
                 [InlineKeyboardButton('Назад', callback_data='back end_time'),
                  InlineKeyboardButton('Сохранить', callback_data='save end_time')]]
 
@@ -231,37 +230,17 @@ def start_time_callback(update: Update, context: CallbackContext):
     start_time = make_time_callback_operation('start_time', update, context)
 
     new_message = f'*Настройки*\n\nВремя начала отправки слов:\n\n{start_time}\n'
-    keyboard = [[InlineKeyboardButton('<<<', callback_data='start_time h-'),
+    keyboard = [[InlineKeyboardButton('\u25C1', callback_data='start_time h-'),
                  InlineKeyboardButton('час', callback_data='start_time h0'),
-                 InlineKeyboardButton('>>>', callback_data='start_time h+')],
-                [InlineKeyboardButton('<<<', callback_data='start_time m-'),
+                 InlineKeyboardButton('\u25B7', callback_data='start_time h+')],
+                [InlineKeyboardButton('\u25C1', callback_data='start_time m-'),
                  InlineKeyboardButton('мин', callback_data='start_time m0'),
-                 InlineKeyboardButton('>>>', callback_data='start_time m+')],
+                 InlineKeyboardButton('\u25B7', callback_data='start_time m+')],
                 [InlineKeyboardButton('Назад', callback_data='back start_time'),
                  InlineKeyboardButton('Сохранить', callback_data='save start_time')]]
 
     update.callback_query.edit_message_text(new_message, parse_mode='MarkdownV2',
                                             reply_markup=InlineKeyboardMarkup(keyboard))
-
-    return
-
-
-def handle_callback(update: Update, context: CallbackContext):
-    message = update.effective_message.text
-    eng_word, ru_word = [line.split(': ')[-1] for line in message.split('\n')]
-
-    is_known = update.callback_query.data
-    user_name = update.effective_user.first_name
-    knew = 'знает' if is_known == 'known' else 'не знает'
-    verdict = f'Пользователь {user_name} {knew} слово {eng_word}'
-    print(verdict)
-
-    new_message = message
-    if is_known == 'known':
-        new_message = f'~{new_message}~'
-
-    update.callback_query.answer()
-    update.callback_query.edit_message_text(new_message, parse_mode='MarkdownV2', reply_markup=None)
 
     return
 
@@ -291,9 +270,11 @@ def handle_echo(update: Update, context: CallbackContext):
     text = update.message.text
     context.bot.send_message(chat_id, text)
 
-    print('------------chat_data------------')
-    print(json.dumps(context.chat_data, indent=2))
-    print('---------------------------------')
+    #print(get_word_translation('party'))
+
+    # print('------------chat_data------------')
+    # print(json.dumps(context.chat_data, indent=2))
+    # print('---------------------------------')
 
 
 if __name__ == '__main__':
@@ -311,7 +292,7 @@ if __name__ == '__main__':
     dispatcher.add_handler(CommandHandler('settings', handle_settings))
     dispatcher.add_handler(MessageHandler(Filters.text, handle_echo))
 
-    dispatcher.add_handler(CallbackQueryHandler(handle_callback, pattern=r'.*known$'))
+    dispatcher.add_handler(CallbackQueryHandler(word_callback, pattern=r'.*known$'))
     dispatcher.add_handler(CallbackQueryHandler(num_of_words_callback, pattern=r'^num_of_words.*'))
     dispatcher.add_handler(CallbackQueryHandler(timezone_callback, pattern=r'^timezone.*'))
     dispatcher.add_handler(CallbackQueryHandler(start_time_callback, pattern=r'^start_time.*'))

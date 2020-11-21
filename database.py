@@ -1,5 +1,5 @@
-from pymongo import MongoClient
 from collections import defaultdict
+from pymongo import MongoClient
 
 
 database = None

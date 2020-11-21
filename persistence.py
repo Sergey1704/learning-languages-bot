@@ -1,5 +1,5 @@
-from collections import defaultdict
 from copy import deepcopy
+from collections import defaultdict
 from telegram.ext import DictPersistence
 from database import get_from_database, set_to_database
 from jobs import restart_user_jobs

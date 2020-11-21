@@ -1,57 +1,7 @@
-from telegram.ext import Updater, JobQueue
 from datetime import datetime, time, timedelta
+from telegram.ext import Updater, JobQueue
 from database import set_to_database, get_from_database
-
-from random import choice
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import CallbackContext
-
-
-words = {'Algebra': 'алгебра',
-         'Archaeology': 'археология',
-         'Art': 'изобразительное искусство',
-         'Biology': 'биология',
-         'Botany': 'ботаника',
-         'Calculus': 'математический анализ',
-         'Chemistry': 'химия',
-         'Computer science': 'информатика',
-         'Drama': 'драматургия',
-         'Economics': 'экономика',
-         'English': 'английский',
-         'French': 'французский',
-         'Geography': 'география',
-         'Geology': 'геология',
-         'Geometry': 'геометрия',
-         'German': 'немецкий',
-         'Gym': 'гимнастика',
-         'Health': 'охрана здоровья',
-         'History': 'история',
-         'Home economics': 'домоводство',
-         'Keyboarding': 'машинопись',
-         'Language arts': 'словесность',
-         'Literature': 'литература',
-         'Math': 'математика',
-         'Mathematics': 'математика',
-         'Music': 'музыка',
-         'Pe': 'физкультура',
-         'Physical education': 'физкультура',
-         'Physics': 'физика',
-         'Psychology': 'психология',
-         'Reading': 'чтение',
-         'Science': 'наука',
-         'Social studies': 'социология, обществознание',
-         'World geography': 'мировая география',
-         'Writing': 'письменность, письменная речь'}
-
-
-def notify_user(context: CallbackContext):
-    chat_id = context.job.context['chat_id']
-    eng_word, ru_word = choice(list(words.items()))
-    message = f'ENG: {eng_word}\nRUS: {ru_word}'
-
-    keyboard = [[InlineKeyboardButton('знаю', callback_data='known'),
-                 InlineKeyboardButton('не знаю', callback_data='unknown')]]
-    context.bot.send_message(chat_id, message, reply_markup=InlineKeyboardMarkup(keyboard))
+from words import send_word
 
 
 def restart_user_jobs(chat_id: int, chat_data: dict, job_queue: JobQueue):
@@ -75,7 +25,8 @@ def restart_user_jobs(chat_id: int, chat_data: dict, job_queue: JobQueue):
         job_datetime = datetime.combine(datetime.utcnow(), start_time) + i * time_interval
         job_time = job_datetime.timetz()
 
-        job_queue.run_daily(notify_user, job_time, context={'chat_id': chat_id}, name=str(chat_id))
+        job_queue.run_daily(send_word, job_time, context={'chat_id': chat_id}, name=str(chat_id),
+                            job_kwargs={'misfire_grace_time': 10*60})
 
         job_times.append({'time': job_time.isoformat()})
 
@@ -91,7 +42,8 @@ def start_saved_jobs(updater: Updater):
     for chat_id, jobs in user_jobs.items():
         for job in jobs:
             job_time = time.fromisoformat(job.get('time'))
-            updater.job_queue.run_daily(notify_user, job_time, context={'chat_id': chat_id}, name=str(chat_id))
+            updater.job_queue.run_daily(send_word, job_time, context={'chat_id': chat_id}, name=str(chat_id),
+                                        job_kwargs={'misfire_grace_time': 10*60})
 
             count_jobs += 1
         count_users += 1
