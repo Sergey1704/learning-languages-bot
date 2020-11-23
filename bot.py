@@ -1,9 +1,12 @@
 from environs import Env
+from random import choice
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Updater, MessageHandler, Filters, CallbackContext, CommandHandler, CallbackQueryHandler
+from telegram.ext import Updater, MessageHandler, Filters, CallbackContext, CommandHandler, CallbackQueryHandler, ConversationHandler
 from persistence import MongoPersistence
 from jobs import start_saved_jobs
 from words import word_callback
+
+import json
 
 
 def convert_time_from_utc(utc_time: str, timezone: str) -> str:
@@ -11,13 +14,16 @@ def convert_time_from_utc(utc_time: str, timezone: str) -> str:
     utc_hours, utc_minutes = [int(t) for t in utc_time.split(':')]
     sign = 1 if timezone[3] == '+' else -1
     tz_hours, tz_minutes = [int(t) for t in timezone[-5:].split(':')]
+
     hours = utc_hours + sign * tz_hours
     minutes = utc_minutes + sign * tz_minutes
+
     if not (0 <= minutes <= 59):
         hours += minutes // 60
         minutes %= 60
     if not (0 <= hours <= 23):
         hours %= 24
+
     time = ':'.join([str(hours).zfill(2), str(minutes).zfill(2)])
 
     return time
@@ -27,6 +33,7 @@ def convert_time_to_utc(time: str, timezone: str) -> str:
         inverse_timezone = timezone.replace('+', '-')
     else:
         inverse_timezone = timezone.replace('-', '+')
+
     utc_time = convert_time_from_utc(time, inverse_timezone)
     utc_time += ':00'
 
@@ -37,9 +44,13 @@ def timezone_difference(timezone1: str, timezone2: str) -> str:
     sign2 = 1 if timezone2[3] == '+' else -1
     tz1_hours, tz1_minutes = [int(t) for t in timezone1[-5:].split(':')]
     tz2_hours, tz2_minutes = [int(t) for t in timezone2[-5:].split(':')]
+
     tz_minutes = sign1 * (tz1_hours * 60 + tz1_minutes) - sign2 * (tz2_hours * 60 + tz2_minutes)
     sign = '+' if tz_minutes >= 0 else '-'
-    tz_hours, tz_minutes = abs(tz_minutes) // 60, abs(tz_minutes) % 60
+
+    tz_hours = abs(tz_minutes) // 60
+    tz_minutes = abs(tz_minutes) % 60
+
     timezone = 'UTC' + sign + ':'.join([str(tz_hours).zfill(2), str(tz_minutes).zfill(2)])
 
     return timezone
@@ -89,10 +100,6 @@ def back_and_save_callback(update: Update, context: CallbackContext):
     update.callback_query.edit_message_text(new_message, parse_mode='MarkdownV2',
                                             reply_markup=InlineKeyboardMarkup(keyboard))
 
-    return
-
-def empty_callback(update: Update, context: CallbackContext):
-    update.callback_query.answer()
     return
 
 def timezone_callback(update: Update, context: CallbackContext):
@@ -151,7 +158,7 @@ def num_of_words_callback(update: Update, context: CallbackContext):
         elif diff == '-':
             num_of_words -= 1
         if not (0 <= num_of_words <= 50):
-            return
+            num_of_words %= 51
         num_of_words = str(num_of_words)
 
     new_message = f'*Настройки*\n\nКоличество слов в день:\n\n{num_of_words}'
@@ -175,10 +182,12 @@ def make_time_callback_operation(setting_name: str, update: Update, context: Cal
         time = context.chat_data.get('settings').get(setting_name)
         timezone = context.chat_data.get('settings').get('timezone')
         time = convert_time_from_utc(time, timezone)
+
         if diff == 'h0' or diff == 'm0':
             saved_hours, saved_minutes = [int(t) for t in time.split(':')]
             current_time = callback_message.split()[-1]
             hours, minutes = [int(t) for t in current_time.split(':')]
+
             if diff == 'h0':
                 hours = saved_hours
             elif diff == 'm0':
@@ -247,10 +256,23 @@ def start_time_callback(update: Update, context: CallbackContext):
 
 def handle_start(update: Update, context: CallbackContext):
     print('Start command')
+
     if not context.chat_data:
-        default_settings = {'num_of_words': 10, 'timezone': 'UTC+03:00',
-                            'start_time': '07:30:00', 'end_time': '17:30:00'}
-        context.chat_data['settings'] = default_settings
+        default_chat_data = {
+            'settings': {
+                'num_of_words': 10,
+                'timezone': 'UTC+03:00',
+                'start_time': '07:30:00',
+                'end_time': '17:30:00'
+            },
+            'words': {
+                'sent': {},
+                'unknown': {},
+                'known': {},
+                'well-known': {}
+            }
+        }
+        context.chat_data.update(default_chat_data)
 
 
 def handle_settings(update: Update, context: CallbackContext):
@@ -265,16 +287,112 @@ def handle_settings(update: Update, context: CallbackContext):
     context.bot.send_message(chat_id, message, parse_mode='MarkdownV2', reply_markup=InlineKeyboardMarkup(keyboard))
 
 
+SET_NUMBER, ANSWERING = range(2)
+
+def handle_test(update: Update, context: CallbackContext):
+    print('Test command')
+    chat_id = update.message.chat_id
+    max_num = len(context.chat_data['words']['known'])
+
+    test_start_param = {'started': False, 'num_of_words': 0, 'current_number': 1, 'current_word': ''}
+    context.user_data.update({'test': test_start_param})
+
+    context.user_data['test']['started'] = True
+
+    message = f'*Тест*\n\nВведите количество слов \(макс\. {max_num}\):'
+    context.bot.send_message(chat_id, message, parse_mode='MarkdownV2')
+
+    return SET_NUMBER
+
+def handle_stop(update: Update, context: CallbackContext):
+    print('Stop command')
+    chat_id = update.message.chat_id
+    message = 'Тест завершен.'
+    context.bot.send_message(chat_id, message)
+    context.user_data['test']['started'] = False
+
+    return ConversationHandler.END
+
+def set_number(update: Update, context: CallbackContext):
+    print('Set number of words in test')
+    chat_id = update.message.chat_id
+    words = context.chat_data['words']
+    current_number = context.user_data['test']['current_number']
+    #num_of_words = context.user_data['test']['num_of_words']
+    str_number = update.message.text
+    try:
+        number = int(str_number)
+        if not (0 < number <= len(context.chat_data['words']['known'])):
+            raise ValueError
+
+        context.user_data['test']['num_of_words'] = number
+
+        context.bot.send_message(chat_id, 'Тест начинается...')
+
+        all_known_words = list(words['known'].keys())
+        part_for_test = all_known_words[:number - current_number + 1]
+        word = choice(part_for_test)
+
+        context.user_data['test']['current_word'] = word
+        context.user_data['test']['current_number'] += 1
+
+        message = f'#{current_number}\nНапишите перевод слова:\n\n{word}'
+        context.bot.send_message(chat_id, message)
+
+        return ANSWERING
+    except ValueError:
+        message = 'Некорректный ввод. :(\nПопробуйте еще раз.'
+        context.bot.send_message(chat_id, message)
+
+        return SET_NUMBER
+
+def answer(update: Update, context: CallbackContext):
+    chat_id = update.message.chat_id
+    words = context.chat_data['words']
+
+    num_of_words = context.user_data['test']['num_of_words']
+    current_number = context.user_data['test']['current_number']
+    current_word = context.user_data['test']['current_word']
+
+    user_translation = update.message.text
+    correct_translation = words['known'][current_word]
+
+    if user_translation.strip().lower() == correct_translation.strip().lower():
+        message = 'Правильно! :)'
+        context.bot.send_message(chat_id, message)
+
+        words['known'].pop(current_word, None)
+        words['well-known'][current_word] = correct_translation
+    else:
+        message = f'Неправильно. :(\nВерный ответ: {correct_translation}'
+        context.bot.send_message(chat_id, message)
+
+        words['known'].pop(current_word, None)
+        words['unknown'][current_word] = correct_translation
+
+    if current_number > num_of_words:
+        return handle_stop(update, context)
+
+    all_known_words = list(words['known'].keys())
+    part_for_test = all_known_words[:num_of_words - current_number + 1]
+    word = choice(part_for_test)
+
+    context.user_data['test']['current_word'] = word
+    context.user_data['test']['current_number'] += 1
+
+    message = f'#{current_number}\nНапишите перевод слова:\n\n{word}'
+    context.bot.send_message(chat_id, message)
+
+    return ANSWERING
+
 def handle_echo(update: Update, context: CallbackContext):
     chat_id = update.message.chat_id
     text = update.message.text
     context.bot.send_message(chat_id, text)
 
-    #print(get_word_translation('party'))
-
-    # print('------------chat_data------------')
-    # print(json.dumps(context.chat_data, indent=2))
-    # print('---------------------------------')
+    print('------------chat_data------------')
+    print(json.dumps(context.chat_data, indent=2))
+    print('---------------------------------')
 
 
 if __name__ == '__main__':
@@ -288,6 +406,18 @@ if __name__ == '__main__':
     persistence.job_queue = updater.job_queue
     start_saved_jobs(updater)
 
+    test_conv_handler = ConversationHandler(
+        entry_points=[CommandHandler('test', handle_test)],
+        states={
+            SET_NUMBER: [CommandHandler('stop', handle_stop), MessageHandler(Filters.text, set_number)],
+            ANSWERING: [CommandHandler('stop', handle_stop), MessageHandler(Filters.text, answer)],
+            ConversationHandler.TIMEOUT: [MessageHandler(Filters.all, handle_stop)]
+        },
+        fallbacks=[CommandHandler('stop', handle_stop)],
+        conversation_timeout=10*60
+    )
+    dispatcher.add_handler(test_conv_handler)
+
     dispatcher.add_handler(CommandHandler('start', handle_start))
     dispatcher.add_handler(CommandHandler('settings', handle_settings))
     dispatcher.add_handler(MessageHandler(Filters.text, handle_echo))
@@ -298,7 +428,6 @@ if __name__ == '__main__':
     dispatcher.add_handler(CallbackQueryHandler(start_time_callback, pattern=r'^start_time.*'))
     dispatcher.add_handler(CallbackQueryHandler(end_time_callback, pattern=r'^end_time.*'))
     dispatcher.add_handler(CallbackQueryHandler(back_and_save_callback, pattern=r'^(save.*|back.*)'))
-    dispatcher.add_handler(CallbackQueryHandler(empty_callback, pattern=r'^0$'))
 
     updater.start_polling()
     updater.idle()

@@ -26,7 +26,7 @@ def restart_user_jobs(chat_id: int, chat_data: dict, job_queue: JobQueue):
         job_time = job_datetime.timetz()
 
         job_queue.run_daily(send_word, job_time, context={'chat_id': chat_id}, name=str(chat_id),
-                            job_kwargs={'misfire_grace_time': 10*60})
+                            job_kwargs={'misfire_grace_time': 20*60})
 
         job_times.append({'time': job_time.isoformat()})
 
@@ -43,8 +43,7 @@ def start_saved_jobs(updater: Updater):
         for job in jobs:
             job_time = time.fromisoformat(job.get('time'))
             updater.job_queue.run_daily(send_word, job_time, context={'chat_id': chat_id}, name=str(chat_id),
-                                        job_kwargs={'misfire_grace_time': 10*60})
-
+                                        job_kwargs={'misfire_grace_time': 20*60})
             count_jobs += 1
         count_users += 1
 
