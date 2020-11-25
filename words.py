@@ -12,6 +12,8 @@ def translate_word(eng_word: str) -> str:
         translator = Translator(service_urls=['translate.google.com'])
         try:
             ru_word = translator.translate(eng_word, src='en', dest='ru').text
+            if eng_word == eng_word.lower():
+                ru_word = ru_word.lower()
             return ru_word
         except Exception:
             sleep(5)
