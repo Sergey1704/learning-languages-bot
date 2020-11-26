@@ -1,4 +1,5 @@
 from collections import defaultdict
+from environs import Env
 from pymongo import MongoClient
 
 
@@ -8,10 +9,15 @@ def get_database():
     global database
 
     if not database:
-        client = MongoClient(host='localhost', port=27017)
+        env = Env()
+        host = env.str('DB_HOST')
+        port = env.int('DB_PORT')
+
+        client = MongoClient(host=host, port=port)
         database = client.bot_database.users
 
     return database
+
 
 def get_from_database(field_name: str) -> dict:
     mongo = get_database()
@@ -24,6 +30,7 @@ def get_from_database(field_name: str) -> dict:
         result_dict[key] = value
 
     return result_dict
+
 
 def set_to_database(chat_id: int, field_name: str, data: any):
     mongo = get_database()

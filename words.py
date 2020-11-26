@@ -20,9 +20,9 @@ def translate_word(eng_word: str) -> str:
 
     return 'не найдено'
 
+
 def get_random_word() -> str:
     env = Env()
-    env.read_env()
     api_key = env.str('API_KEY')
 
     params = {'minCorpusCount': 5000, 'minDictionaryCount': 10, 'hasDictionaryDef': True, 'api_key': api_key,
@@ -80,10 +80,8 @@ def word_callback(update: Update, context: CallbackContext):
     words[word_status][eng_word] = ru_word
     words['sent'].pop(eng_word, None)
 
-    new_message = message.replace('-', '\-')
+    new_message = message.replace('-', r'\-')
     if word_status == 'known':
         new_message = f'~{new_message}~'
 
     update.callback_query.edit_message_text(new_message, parse_mode='MarkdownV2', reply_markup=None)
-
-    return

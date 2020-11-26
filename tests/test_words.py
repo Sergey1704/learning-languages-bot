@@ -21,5 +21,5 @@ def test_get_random_word():
     assert eng_word != 'not found'
     assert type(eng_word) == str
 
-    pattern = compile("^[a-zA-Z\-]+$")
+    pattern = compile(r"^[a-zA-Z\-.`&]+$")
     assert pattern.match(eng_word)

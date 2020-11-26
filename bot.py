@@ -55,7 +55,6 @@ def back_and_save_callback(update: Update, context: CallbackContext):
     update.callback_query.edit_message_text(new_message, parse_mode='MarkdownV2',
                                             reply_markup=InlineKeyboardMarkup(keyboard))
 
-    return
 
 def timezone_callback(update: Update, context: CallbackContext):
     timezones = ['UTC−12:00', 'UTC−11:00', 'UTC−10:00', 'UTC−09:30', 'UTC−09:00', 'UTC−08:00', 'UTC−07:00',
@@ -84,7 +83,7 @@ def timezone_callback(update: Update, context: CallbackContext):
             return
         timezone = timezones[index]
 
-    timezone = timezone.replace('+', '\\+').replace('-', '\\-')
+    timezone = timezone.replace('+', r'\+').replace('-', r'\-')
     new_message = f'*Настройки*\n\nЧасовой пояс:\n\n{timezone}'
     keyboard = [[InlineKeyboardButton('\u25C1', callback_data='timezone -'),
                  InlineKeyboardButton('\u25A1', callback_data='timezone 0'),
@@ -95,7 +94,6 @@ def timezone_callback(update: Update, context: CallbackContext):
     update.callback_query.edit_message_text(new_message, parse_mode='MarkdownV2',
                                             reply_markup=InlineKeyboardMarkup(keyboard))
 
-    return
 
 def num_of_words_callback(update: Update, context: CallbackContext):
     update.callback_query.answer()
@@ -126,7 +124,6 @@ def num_of_words_callback(update: Update, context: CallbackContext):
     update.callback_query.edit_message_text(new_message, parse_mode='MarkdownV2',
                                             reply_markup=InlineKeyboardMarkup(keyboard))
 
-    return
 
 def make_time_callback_operation(setting_name: str, update: Update, context: CallbackContext) -> str:
     callback_data = update.callback_query.data
@@ -185,8 +182,6 @@ def end_time_callback(update: Update, context: CallbackContext):
     update.callback_query.edit_message_text(new_message, parse_mode='MarkdownV2',
                                             reply_markup=InlineKeyboardMarkup(keyboard))
 
-    return
-
 
 def start_time_callback(update: Update, context: CallbackContext):
     update.callback_query.answer()
@@ -205,8 +200,6 @@ def start_time_callback(update: Update, context: CallbackContext):
 
     update.callback_query.edit_message_text(new_message, parse_mode='MarkdownV2',
                                             reply_markup=InlineKeyboardMarkup(keyboard))
-
-    return
 
 
 def handle_start(update: Update, context: CallbackContext):
@@ -259,6 +252,7 @@ def handle_test(update: Update, context: CallbackContext):
 
     return SET_NUMBER
 
+
 def handle_stop(update: Update, context: CallbackContext):
     print('Stop command')
     chat_id = update.message.chat_id
@@ -267,6 +261,7 @@ def handle_stop(update: Update, context: CallbackContext):
     context.user_data['test']['started'] = False
 
     return ConversationHandler.END
+
 
 def set_number(update: Update, context: CallbackContext):
     print('Set number of words in test')
@@ -295,11 +290,13 @@ def set_number(update: Update, context: CallbackContext):
         context.bot.send_message(chat_id, message)
 
         return ANSWERING
+
     except ValueError:
         message = 'Некорректный ввод. :(\nПопробуйте еще раз.'
         context.bot.send_message(chat_id, message)
 
         return SET_NUMBER
+
 
 def answer(update: Update, context: CallbackContext):
     chat_id = update.message.chat_id
@@ -339,6 +336,7 @@ def answer(update: Update, context: CallbackContext):
     context.bot.send_message(chat_id, message)
 
     return ANSWERING
+
 
 def handle_echo(update: Update, context: CallbackContext):
     chat_id = update.message.chat_id
