@@ -1,4 +1,5 @@
 import pytest
+
 from database import get_database, get_from_database, set_to_database
 
 
@@ -14,8 +15,9 @@ data_for_database_examples = [
     (-178, '132test321*/as--df', True),
     (99, '132test321*/as--df', [1]),
     (-19815, '132test321*/as--df', {}),
-    (0, '132test321*/as--df', {'5': [], 'sdibu': 7, 'x': {}})
+    (0, '132test321*/as--df', {'5': [], 'sdibu': 7, 'x': {}}),
 ]
+
 
 @pytest.mark.parametrize('chat_id, field_name, data', data_for_database_examples)
 def test_get_from_database(chat_id, field_name, data):
@@ -31,4 +33,3 @@ def test_set_to_database(chat_id, field_name, data):
     database = get_database()
     result = database.find_one({'chat_id': chat_id}, ['chat_id', field_name])
     assert result[field_name] == data
-

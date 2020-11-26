@@ -1,9 +1,13 @@
+# pylint: disable=invalid-name, global-statement
+
 from collections import defaultdict
+from typing import DefaultDict, Union
+
 from environs import Env
 from pymongo import MongoClient
 
-
 database = None
+
 
 def get_database():
     global database
@@ -19,9 +23,9 @@ def get_database():
     return database
 
 
-def get_from_database(field_name: str) -> dict:
+def get_from_database(field_name: str):
     mongo = get_database()
-    result_dict = defaultdict(dict)
+    result_dict: DefaultDict[int, dict] = defaultdict(dict)
 
     users = mongo.find({}, ['chat_id', field_name])
     for user in users:
@@ -32,7 +36,7 @@ def get_from_database(field_name: str) -> dict:
     return result_dict
 
 
-def set_to_database(chat_id: int, field_name: str, data: any):
+def set_to_database(chat_id: int, field_name: str, data: Union[dict, list]):
     mongo = get_database()
     result = mongo.update_one({'chat_id': chat_id}, {'$set': {field_name: data}}, upsert=True)
 

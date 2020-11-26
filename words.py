@@ -1,21 +1,24 @@
-from environs import Env
+from random import choice, random
 from time import sleep
-from random import random, choice
+
 import requests
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import CallbackContext
+from environs import Env
 from googletrans import Translator
+from telegram import Update
+from telegram.ext import CallbackContext
+
+from keyboards import SEND_WORD_KEYBOARD
 
 
 def translate_word(eng_word: str) -> str:
-    for t in range(20):
+    for _ in range(100):
         translator = Translator(service_urls=['translate.google.com'])
         try:
             ru_word = translator.translate(eng_word, src='en', dest='ru').text
             if eng_word == eng_word.lower():
                 ru_word = ru_word.lower()
             return ru_word
-        except Exception:
+        except AttributeError:
             sleep(5)
 
     return 'не найдено'
@@ -25,12 +28,17 @@ def get_random_word() -> str:
     env = Env()
     api_key = env.str('API_KEY')
 
-    params = {'minCorpusCount': 5000, 'minDictionaryCount': 10, 'hasDictionaryDef': True, 'api_key': api_key,
-              'excludePartOfSpeech': 'interjection,pronoun,preposition,abbreviation,affix,article,auxiliary-verb,'
-                                     'conjunction,definite-article,family-name,given-name,noun-posessive,'
-                                     'past-participle,phrasal-prefix,proper-noun,proper-noun-plural,'
-                                     'proper-noun-posessive,suffix'}
-    for t in range(20):
+    params = {
+        'minCorpusCount': 5000,
+        'minDictionaryCount': 10,
+        'hasDictionaryDef': True,
+        'api_key': api_key,
+        'excludePartOfSpeech': 'interjection,pronoun,preposition,abbreviation,affix,article,auxiliary-verb,'
+                               'conjunction,definite-article,family-name,given-name,noun-posessive,'
+                               'past-participle,phrasal-prefix,proper-noun,proper-noun-plural,'
+                               'proper-noun-posessive,suffix'
+    }
+    for _ in range(100):
         try:
             response = requests.get('https://api.wordnik.com/v4/words.json/randomWord', params=params)
             response.raise_for_status()
@@ -63,10 +71,7 @@ def send_word(context: CallbackContext):
     words['sent'][eng_word] = ru_word
 
     message = f'ENG: {eng_word}\nRUS: {ru_word}'
-    keyboard = [[InlineKeyboardButton('знаю', callback_data='known'),
-                 InlineKeyboardButton('не знаю', callback_data='unknown')]]
-
-    context.bot.send_message(chat_id, message, reply_markup=InlineKeyboardMarkup(keyboard))
+    context.bot.send_message(chat_id, message, reply_markup=SEND_WORD_KEYBOARD)
 
 
 def word_callback(update: Update, context: CallbackContext):
@@ -80,8 +85,7 @@ def word_callback(update: Update, context: CallbackContext):
     words[word_status][eng_word] = ru_word
     words['sent'].pop(eng_word, None)
 
-    new_message = message.replace('-', r'\-')
+    new_message = message
     if word_status == 'known':
-        new_message = f'~{new_message}~'
-
-    update.callback_query.edit_message_text(new_message, parse_mode='MarkdownV2', reply_markup=None)
+        new_message = f'<s>{new_message}</s>'
+    update.callback_query.edit_message_text(new_message, parse_mode='HTML', reply_markup=None)

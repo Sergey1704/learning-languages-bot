@@ -1,20 +1,31 @@
 from datetime import datetime, time, timedelta
-from telegram.ext import Updater, JobQueue
-from database import set_to_database, get_from_database
+from typing import Dict, Union
+
+from telegram.ext import JobQueue, Updater
+
+from database import get_from_database, set_to_database
 from words import send_word
 
 
-def restart_user_jobs(chat_id: int, chat_data: dict, job_queue: JobQueue):
+def restart_user_jobs(chat_id: int, chat_data: Dict[str, Dict[str, Union[int, str, dict]]], job_queue: JobQueue):
     current_jobs = job_queue.get_jobs_by_name(str(chat_id))
     for job in current_jobs:
         job.schedule_removal()
 
     settings = chat_data.get('settings')
-    num_of_words = settings.get('num_of_words')
-    start_time = time.fromisoformat(settings.get('start_time'))
-    end_time = time.fromisoformat(settings.get('end_time'))
+    assert isinstance(settings, dict)
 
-    time_interval = None
+    num_of_words = settings.get('num_of_words')
+    str_start_time = settings.get('start_time')
+    str_end_time = settings.get('end_time')
+    assert isinstance(num_of_words, int)
+    assert isinstance(str_start_time, str)
+    assert isinstance(str_end_time, str)
+
+    start_time = time.fromisoformat(str_start_time)
+    end_time = time.fromisoformat(str_end_time)
+
+    time_interval = timedelta()
     days = 0 if start_time <= end_time else 1
     if num_of_words > 0:
         time_interval = timedelta(days=days, hours=end_time.hour - start_time.hour,
@@ -26,7 +37,7 @@ def restart_user_jobs(chat_id: int, chat_data: dict, job_queue: JobQueue):
         job_time = job_datetime.timetz()
 
         job_queue.run_daily(send_word, job_time, context={'chat_id': chat_id}, name=str(chat_id),
-                            job_kwargs={'misfire_grace_time': 20*60})
+                            job_kwargs={'misfire_grace_time': 20 * 60})
 
         job_times.append({'time': job_time.isoformat()})
 
@@ -43,7 +54,7 @@ def start_saved_jobs(updater: Updater):
         for job in jobs:
             job_time = time.fromisoformat(job.get('time'))
             updater.job_queue.run_daily(send_word, job_time, context={'chat_id': chat_id}, name=str(chat_id),
-                                        job_kwargs={'misfire_grace_time': 20*60})
+                                        job_kwargs={'misfire_grace_time': 20 * 60})
             count_jobs += 1
         count_users += 1
 

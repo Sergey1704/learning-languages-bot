@@ -1,4 +1,5 @@
-# file for timezone conversation functions
+# file for timezone conversion functions
+
 
 def convert_time_from_utc(utc_time: str, timezone: str) -> str:
     utc_time = utc_time[:5]
@@ -9,15 +10,16 @@ def convert_time_from_utc(utc_time: str, timezone: str) -> str:
     hours = utc_hours + sign * tz_hours
     minutes = utc_minutes + sign * tz_minutes
 
-    if not (0 <= minutes <= 59):
+    if not 0 <= minutes <= 59:
         hours += minutes // 60
         minutes %= 60
-    if not (0 <= hours <= 23):
+    if not 0 <= hours <= 23:
         hours %= 24
 
     time = ':'.join([str(hours).zfill(2), str(minutes).zfill(2)])
 
     return time
+
 
 def convert_time_to_utc(time: str, timezone: str) -> str:
     if timezone[3] == '+':
@@ -29,6 +31,7 @@ def convert_time_to_utc(time: str, timezone: str) -> str:
     utc_time += ':00'
 
     return utc_time
+
 
 def timezone_difference(timezone1: str, timezone2: str) -> str:
     sign1 = 1 if timezone1[3] == '+' else -1

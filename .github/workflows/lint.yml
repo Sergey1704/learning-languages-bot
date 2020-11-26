@@ -1,0 +1,26 @@
+name: lint
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  lint:
+    name: Lint python code
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Run linters
+        uses: ricardochaves/python-lint@v1.3.0
+        with:
+          python-root-list: "*.py tests"
+          use-black: false
+          use-isort: false
+          extra-pylint-options: "--disable=E0401,C0114,C0115,C0116 --max-line-length=120 --max-locals=20"
+          extra-pycodestyle-options: "--ignore=E501"
+          extra-flake8-options: "--ignore=E501"
+          extra-mypy-options: "--ignore-missing-imports"
