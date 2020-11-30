@@ -30,6 +30,8 @@ jobs:
           API_KEY: ${{ secrets.WORDNIK_API_KEY }}
           DB_HOST: localhost
           DB_PORT: 27017
+          DB_USERNAME:
+          DB_PASSWORD:
       - name: Publish test results
         uses: EnricoMi/publish-unit-test-result-action@v1.5
         if: always()

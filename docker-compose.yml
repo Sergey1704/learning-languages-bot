@@ -1,0 +1,37 @@
+version: "3.7"
+
+services:
+  bot_db:
+    container_name: bot_db
+    image: mongo:4.4.2-bionic
+    command: mongod --port ${DB_PORT}
+    restart: always
+    volumes:
+      - ./db_data:/data/db/
+    env_file:
+      - .env
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${DB_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - ${DB_PORT}:${DB_PORT}
+    networks:
+      - monitor-net
+
+  bot_app:
+    container_name: bot_app
+    build: .
+    restart: always
+    command: sh -c "./wait-for-it.sh bot_db:${DB_PORT} -t 0 -- python bot.py"
+    env_file:
+      - .env
+    environment:
+      DB_HOST: bot_db
+    depends_on:
+      - bot_db
+    networks:
+      - monitor-net
+
+networks:
+  monitor-net:
+    driver: bridge

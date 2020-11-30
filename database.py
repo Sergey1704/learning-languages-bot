@@ -16,8 +16,10 @@ def get_database():
         env = Env()
         host = env.str('DB_HOST')
         port = env.int('DB_PORT')
+        username = env.str('DB_USERNAME')
+        password = env.str('DB_PASSWORD')
 
-        client = MongoClient(host=host, port=port)
+        client = MongoClient(host=host, port=port, username=username, password=password)
         database = client.bot_database.users
 
     return database
