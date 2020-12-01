@@ -3,7 +3,8 @@ from time import sleep
 
 import requests
 from environs import Env
-from googletrans import Translator
+from deep_translator import GoogleTranslator
+from deep_translator.exceptions import TooManyRequests
 from telegram import Update
 from telegram.ext import CallbackContext
 
@@ -11,14 +12,14 @@ from keyboards import SEND_WORD_KEYBOARD
 
 
 def translate_word(eng_word: str) -> str:
-    for _ in range(100):
-        translator = Translator(service_urls=['translate.google.com'])
+    for _ in range(4):
+        translator = GoogleTranslator(source='en', target='ru')
         try:
-            ru_word = translator.translate(eng_word, src='en', dest='ru').text
+            ru_word = translator.translate(eng_word)
             if eng_word == eng_word.lower():
                 ru_word = ru_word.lower()
             return ru_word
-        except AttributeError:
+        except TooManyRequests:
             sleep(5)
 
     return 'не найдено'
@@ -30,7 +31,7 @@ def get_random_word() -> str:
 
     params = {
         'minCorpusCount': 5000,
-        'minDictionaryCount': 10,
+        'minDictionaryCount': 20,
         'hasDictionaryDef': True,
         'api_key': api_key,
         'excludePartOfSpeech': 'interjection,pronoun,preposition,abbreviation,affix,article,auxiliary-verb,'

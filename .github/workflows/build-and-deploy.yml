@@ -3,7 +3,6 @@ on:
   workflow_run:
     workflows:
       - tests
-      - lint
     branches:
       - main
     types:

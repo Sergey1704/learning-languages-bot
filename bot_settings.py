@@ -154,32 +154,33 @@ def save_callback(update: Update, context: CallbackContext):
 
     callback_data = update.callback_query.data
     callback_message = update.effective_message.text
+    settings = context.chat_data['settings']
 
     setting_name = callback_data.split()[-1]
     value = callback_message.split()[-1]
 
     if setting_name == 'num_of_words':
         num_of_words = int(value)
-        context.chat_data['settings'][setting_name] = num_of_words
+        settings[setting_name] = num_of_words
 
     elif setting_name in ('start_time', 'end_time'):
         time = value
-        timezone = context.chat_data.get('settings').get('timezone')
+        timezone = settings.get('timezone')
         utc_time = convert_time_to_utc(time, timezone)
-        context.chat_data['settings'][setting_name] = utc_time
+
+        if (setting_name == 'start_time' and settings['end_time'] == utc_time
+                or setting_name == 'end_time' and settings['start_time'] == utc_time):
+            return None
+
+        settings[setting_name] = utc_time
 
     elif setting_name == 'timezone':
         new_timezone = value
-        current_timezone = context.chat_data.get('settings').get('timezone')
+        current_timezone = settings.get('timezone')
         convert_timezone = timezone_difference(new_timezone, current_timezone)
 
-        current_start_time = context.chat_data.get('settings').get('start_time')
-        new_start_time = convert_time_to_utc(current_start_time, convert_timezone)
-        current_end_time = context.chat_data.get('settings').get('end_time')
-        new_end_time = convert_time_to_utc(current_end_time, convert_timezone)
-
-        context.chat_data['settings']['timezone'] = new_timezone
-        context.chat_data['settings']['start_time'] = new_start_time
-        context.chat_data['settings']['end_time'] = new_end_time
+        settings['timezone'] = new_timezone
+        settings['start_time'] = convert_time_to_utc(settings['start_time'], convert_timezone)
+        settings['end_time'] = convert_time_to_utc(settings['end_time'], convert_timezone)
 
     return back_callback(update, context)
