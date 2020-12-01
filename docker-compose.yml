@@ -34,4 +34,5 @@ services:
 
 networks:
   monitor-net:
-    driver: bridge
+    external:
+      name: dockprom_monitor-net

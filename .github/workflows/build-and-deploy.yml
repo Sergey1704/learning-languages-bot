@@ -47,4 +47,5 @@ jobs:
             cd prog/learn-lang-bot/
             wget -O docker-compose.yml https://raw.githubusercontent.com/Sergey1704/learning-languages-bot/main/docker-compose.yml
             docker-compose pull
+            docker network create dockprom_monitor-net
             docker-compose up -d
