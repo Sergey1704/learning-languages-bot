@@ -20,7 +20,7 @@ services:
 
   bot_app:
     container_name: bot_app
-    build: .
+    image: sergey1704/learn-lang-bot:latest
     restart: always
     command: sh -c "./wait-for-it.sh bot_db:${DB_PORT} -t 0 -- python bot.py"
     env_file:
