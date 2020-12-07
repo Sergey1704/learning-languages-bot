@@ -1,4 +1,3 @@
-import json
 from random import choice
 
 from environs import Env
@@ -43,7 +42,7 @@ def handle_test(update: Update, context: CallbackContext):
     }
     context.user_data.update({'test': test_start_param})
 
-    message = f'<b>Тест</b>\n\nВведите количество слов (макс. {max_num}):'
+    message = f'<b>Тест</b>\n\nВведи количество слов (макс. {max_num}):'
     context.bot.send_message(chat_id, message, parse_mode='HTML')
 
     return SET_NUMBER
@@ -70,12 +69,12 @@ def set_number_test(update: Update, context: CallbackContext):
             raise ValueError
 
         context.user_data['test']['num_of_words'] = number
-        context.bot.send_message(chat_id, 'Тест начинается...')
+        context.bot.send_message(chat_id, 'Тест начинается...\n\nЧтобы закончить тест в любой момент, напиши /stop.')
 
         return answer_test(update, context)
 
     except ValueError:
-        message = 'Некорректный ввод. :(\nПопробуйте еще раз.'
+        message = 'Некорректный ввод. :(\nПопробуй еще раз.'
         context.bot.send_message(chat_id, message)
 
         return SET_NUMBER
@@ -139,18 +138,30 @@ def handle_start(update: Update, context: CallbackContext):
         context.chat_data.update(default_chat_data)
 
     chat_id = update.message.chat_id
-    message = 'Привет!'
-    context.bot.send_message(chat_id, message)
+
+    message = ('<b>Привет!</b> С моей помощью ты сможешь выучить много новых английских слов.\n\n'
+               'Каждый день я буду отправлять тебе несколько слов с переводом. Для каждого '
+               'из них ты можешь отметить, знаешь ты его или нет.\n\n'
+               'В любой момент ты можешь провести тест (/test) на знание слов, которые ты отметил знакомыми. '
+               'В случае правильного ответа соответствующее слово больше никогда не встретится в '
+               'ежедневной рассылке. Если же твой перевод будет неверным, то через несколько дней '
+               'это слово с переводом встретится тебе снова.\n\n'
+               'Изменить параметры ежедневной рассылки можно в настройках (/settings).\n\n'
+               'Основные команды можно найти в списке команд (/help).')
+
+    context.bot.send_message(chat_id, message, parse_mode='HTML')
 
 
-def handle_echo(update: Update, context: CallbackContext):
+def handle_help(update: Update, context: CallbackContext):
     chat_id = update.message.chat_id
-    text = update.message.text
-    context.bot.send_message(chat_id, text)
 
-    print('------------chat_data------------')
-    print(json.dumps(context.chat_data, indent=2))
-    print('---------------------------------')
+    message = ('<b>Список команд</b>\n\n'
+               '/start - Основная информация\n'
+               '/help - Список команд\n'
+               '/settings - Настройки рассылки\n'
+               '/test - Тест на знание слов')
+
+    context.bot.send_message(chat_id, message, parse_mode='HTML')
 
 
 if __name__ == '__main__':
@@ -177,8 +188,8 @@ if __name__ == '__main__':
     dispatcher.add_handler(test_conv_handler)
 
     dispatcher.add_handler(CommandHandler('start', handle_start))
+    dispatcher.add_handler(CommandHandler('help', handle_help))
     dispatcher.add_handler(CommandHandler('settings', handle_settings))
-    dispatcher.add_handler(MessageHandler(Filters.text, handle_echo))
 
     dispatcher.add_handler(CallbackQueryHandler(word_callback, pattern=r'.*known$'))
     dispatcher.add_handler(CallbackQueryHandler(num_of_words_callback, pattern=r'^num_of_words.*'))
